@@ -1,0 +1,5 @@
+/resultat
+/.venv
+/.vscode
+/logs
+*.pyc
