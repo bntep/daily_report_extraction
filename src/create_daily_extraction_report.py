@@ -17,7 +17,7 @@ import pandas as pd
 # rajouter dans la variable d'environnement PATH contenant la liste des répertoires systèmes (programme python, librairies, ...)
 # c'est très important quand on crée un package, de rajouter ce répertoire dans PATH
 sys.path.append(str(Path(os.getcwd())))
-from utils.LogWriter import log_location, log_config, log_args
+from utils.LogWriter import log_location, log_args, log_configuration
 from utils.Toolbox_lib import create_year_calendar
 from utils.dbclient.DatabaseClient import DbConnector
 from module.env import *
@@ -28,6 +28,9 @@ CHEMIN_RESULTAT = Path(HOME, "resultat/daily_extraction")
 CHEMIN_RESULTAT.mkdir(parents=True, exist_ok=True)
 receiver = 'bertrand.ntep@eurofidai.org'
 email_message = "Bonjour,\n\nci-joint le rapport journalier de téléchargement des bases de données sur les 15 derniers jours.\n\nCordialement,\n\n\n"
+
+
+db_logger = log_configuration(log_path=log_location())
 
 # Custom Thread Class
 class MyThread(threading.Thread):
@@ -150,12 +153,12 @@ def merge_table(type_instrument: str, df_ref_code_pays_vdf: pd.DataFrame, df_ref
             dict_instrument[f"{type_instrument}"]]
     df = df.pivot_table(index=['libelle_code_vdf_num_pays_en', 'place', 'nom_long'], columns=[
         'date_cotation'], values='identifiant', aggfunc=lambda x: len(x.unique()))
-    df.to_csv(Path(CHEMIN_RESULTAT, file_to_send))
+    df.to_csv(Path(CHEMIN_RESULTAT, file_to_send), sep="|", header=True, index=True, encoding='utf-8')
     db_logger.info(
         'CSV File created successfully... %s', file_to_send)
 
 
-def log_config(log_path: Path, name=__name__) -> object:
+def custom_log_config(log_path: Path, name=__name__) -> object:
     logging.basicConfig(
         filename=log_path,
         level=logging.DEBUG,
@@ -170,7 +173,7 @@ def log_config(log_path: Path, name=__name__) -> object:
     return db_logger
 
 
-db_logger = log_config(log_path=log_location())
+db_logger = log_configuration(log_path=log_location())
 
 
 def run_threads():

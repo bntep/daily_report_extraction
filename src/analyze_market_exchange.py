@@ -6,9 +6,9 @@ Example: analyze_market_exchange.py -t actions
 Example: analyze_market_exchange.py -t actions indices
 """
 
-from sqlalchemy import create_engine
-from sqlalchemy import text
-from sqlalchemy.engine import URL
+# from sqlalchemy import create_engine
+# from sqlalchemy import text
+# from sqlalchemy.engine import URL
 import datetime
 import os
 from pathlib import Path
@@ -18,13 +18,14 @@ import pandas as pd
 import logging
 import threading
 
+
 # rajouter dans la variable d'environnement PATH contenant la liste des répertoires systèmes (programme python, librairies, ...)
 # c'est très important quand on crée un package, de rajouter ce répertoire dans PATH
 
 sys.path.append(str(Path(os.getcwd())))
+from utils.LogWriter import log_location, log_args, log_configuration
 from utils.dbclient.DatabaseClient import DbConnector
-from utils.Toolbox_lib import create_year_calendar, isInclude
-from utils.LogWriter import log_location, log_config, log_args
+from utils.Toolbox_lib import isInclude, create_year_calendar
 from module.env import *
 
 
@@ -44,6 +45,7 @@ CHEMIN_RESULTAT.mkdir(parents=True, exist_ok=True)
 receiver = 'bertrand.ntep@eurofidai.org'
 email_message = "Bonjour,\n\nci-joint l'analyse des places vdf reçues en téléchargement sur les 12 derniers mois.\n\nCordialement,\n\n\n"
 
+db_logger = log_configuration(log_path=log_location())
 
 # Custom Thread Class
 class MyThread(threading.Thread):
@@ -171,45 +173,45 @@ class BaseInstrument():
         df = df.pivot_table(index=['libelle_code_vdf_num_pays_en', 'place', 'nom_long'], columns=[
                             'year', 'month'], values='nb_instrument')
         # df = df.pivot_table(index=['libelle_code_vdf_num_pays_en','place', 'nom_long'], columns=['year','month'], values='identifiant', aggfunc=lambda x: len(x.unique()))
-        df.to_csv(Path(CHEMIN_RESULTAT, FILE_CONTINENT), sep=";")
+        df.to_csv(Path(CHEMIN_RESULTAT, FILE_CONTINENT), sep="|", index=True, encoding='utf-8', header=True)
         db_logger.info('CSV File created successfully... %s', FILE_CONTINENT)
 
 
-def log_config(log_path: Path, name=__name__) -> object:
-    logging.basicConfig(
-        filename=log_path,
-        level=logging.DEBUG,
-        format='%(asctime)s - %(name)s -%(levelname)s - %(message)s',
-        datefmt='%Y%m%d %H:%M:%S',
-        filemode='a',
-    )
+# def log_configuration(log_path: Path, name=__name__) -> object:
+#     logging.basicConfig(
+#         filename=log_path,
+#         level=logging.DEBUG,
+#         format='%(asctime)s - %(name)s -%(levelname)s - %(message)s',
+#         datefmt='%Y%m%d %H:%M:%S',
+#         filemode='a',
+#     )
 
-    logging.getLogger('sqlalchemy.engine')
-    db_logger = logging.getLogger(name)
+#     logging.getLogger('sqlalchemy.engine')
+#     db_logger = logging.getLogger(name)
 
-    return db_logger
-
-
-db_logger = log_config(log_path=log_location())
+#     return db_logger
 
 
-def merge_table(type_instrument: str):
-    df = pd.merge(df_calendrier, dict_df[type_instrument], how='left', on=[
-        'date_cotation'])
-    df = pd.merge(df, df_ref_code_place_vdf, how='left', left_on=[
-        'place'], right_on=['code_place_vdf'])
-    df = pd.merge(df, df_ref_code_pays_vdf, how='left', left_on=[
-        'domicile'], right_on=['code_vdf_num_pays'])
-    df = pd.merge(df, df_ref_allid_vdf, how='left', left_on=[
-        'identifiant'], right_on=['code_valoren'])
-    df = df[df['instrument_type'] ==
-            dict_instrument[f"{type_instrument}"]]
-    df = df.pivot_table(index=['libelle_code_vdf_num_pays_en', 'place', 'nom_long'], columns=[
-        'date_cotation'], values='identifiant', aggfunc=lambda x: len(x.unique()))
-    # df_actions_continent= df_actions_continent.applymap(remove_non_printable_chars)
-    df.to_csv(Path(CHEMIN_RESULTAT, FILE_CONTINENT))
-    db_logger.info(
-        'CSV File created successfully... %s', FILE_CONTINENT)
+# db_logger = log_configuration(log_path=log_location())
+
+
+# def merge_table(type_instrument: str):
+#     df = pd.merge(df_calendrier, dict_df[type_instrument], how='left', on=[
+#         'date_cotation'])
+#     df = pd.merge(df, df_ref_code_place_vdf, how='left', left_on=[
+#         'place'], right_on=['code_place_vdf'])
+#     df = pd.merge(df, df_ref_code_pays_vdf, how='left', left_on=[
+#         'domicile'], right_on=['code_vdf_num_pays'])
+#     df = pd.merge(df, df_ref_allid_vdf, how='left', left_on=[
+#         'identifiant'], right_on=['code_valoren'])
+#     df = df[df['instrument_type'] ==
+#             dict_instrument[f"{type_instrument}"]]
+#     df = df.pivot_table(index=['libelle_code_vdf_num_pays_en', 'place', 'nom_long'], columns=[
+#         'date_cotation'], values='identifiant', aggfunc=lambda x: len(x.unique()))
+#     # df_actions_continent= df_actions_continent.applymap(remove_non_printable_chars)
+#     df.to_csv(Path(CHEMIN_RESULTAT, FILE_CONTINENT))
+#     db_logger.info(
+#         'CSV File created successfully... %s', FILE_CONTINENT)
 
 def run_threads():
 
@@ -242,7 +244,10 @@ def main():
         db_logger.info(f"le paramètre {args.type_instrument} n'est pas valide.")
         raise ValueError(
             f"le paramètre {args.type_instrument} n'est pas valide.")
-        db_logger.info(f"command lines called:")
+        # sys.exit(1)
+    db_logger.info(
+        f"le traitement de la base {args.type_instrument} est terminé. \n le fichier est disponible dans le répertoire {CHEMIN_RESULTAT} \n")
+    
 
 
 db_logger.info(f"command lines called:")

@@ -2,6 +2,7 @@
 import pandas as pd
 import datetime
 import os
+import sys
 from pathlib import Path
 
 WEEKMASK = "Mon Tue Wed Thu Fri"

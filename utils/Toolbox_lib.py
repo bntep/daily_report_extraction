@@ -12,7 +12,7 @@ from pathlib import Path
 from typing import Optional, Union, List
 import pandas as pd
 import glob
-from tqdm import tqdm
+import logging as lg
 sys.path.append(str(Path("/home/groups/daily/travail/Bertrand/Developpement/daily_report_extraction")))
 from module.env import *
 
@@ -80,6 +80,10 @@ def stream_cmd(command: List[str], cwd: Optional[Path] = None):
         # Starting command without shell=True
         process = subprocess.Popen(command, cwd=str(cwd),
                                    stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+        if process.stderr is None:
+            raise ValueError("Failed to capture stderr. Ensure 'stderr=subprocess.PIPE' is set.")
+        if process.stdout is None:
+            raise ValueError("Failed to capture stdout. Ensure 'stdout=subprocess.PIPE' is set.")
 
         # Stream stdout
         while True:
@@ -206,9 +210,9 @@ def create_logger (FICHIER_LOG, db : bool = False) ->  object:
 
     return logger
 
-if __name__ == "__main__":
-    try:
-        # Some code that raises an exception...
-        1/0
-    except Exception as e:
-        print_error_with_clickable_path(e, prefix="Your custom prefix")
+#if __name__ == "__main__":
+    # try:
+    #     # Some code that raises an exception...
+    #     1/0
+    # except Exception as e:
+    # print_error_with_clickable_path(e, prefix="Your custom prefix")
