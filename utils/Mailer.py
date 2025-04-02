@@ -12,11 +12,13 @@ import smtplib
 from pathlib import Path
 import datetime
 import re
+import logging as lg
 from email.message import EmailMessage
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from email.mime.base import MIMEBase
 from email import encoders
+from utils.Toolbox_lib import create_year_calendar
 sys.path.append(str(Path(os.getcwd())))
 from utils.Toolbox_lib import safe_cmd
 from module.env import *
@@ -120,7 +122,7 @@ def write_message(sender_email: str, receiver_email: str, subject: str, body: st
                 f.close()
             except:
                 coderr = "%s" % sys.exc_info()[1]
-                db_logger.error('échec à la lecture du fichier en pièce jointe %s', sys.exc_info()[1])  
+                lg.error('échec à la lecture du fichier en pièce jointe %s', sys.exc_info()[1])  
                 raise ValueError ("échec à la lecture du fichier en pièce jointe (" + coderr + ")")                    
             part.add_header('Content-Disposition', 'attachment', filename="%s" % os.path.basename(fichier))
             msg.attach(part)
@@ -133,7 +135,7 @@ def send_mail(sender_email: str, receiver_email: str, message: EmailMessage, smt
         server.sendmail(sender_email, receiver_email, message.as_string())
 
 
-def send_log_mail(log_path: Path, result_path: Path, receiver_email: str, message_email: str, started_at=datetime.datetime.now(), n_lines_printed: int = 20, subject_prefix: str = "LOG_DEV"):
+def send_log_mail(log_path: Path, result_path: Path, receiver_email: str, message_email: str, started_at=datetime.datetime.now(), n_lines_printed: int = 69, subject_prefix: str = "LOG_DEV"):
     # server firefox
     # myip, _ = safe_cmd("hostname -I | cut -d' ' -f1")
     # if myip.startswith('193.48'):
@@ -149,7 +151,7 @@ def send_log_mail(log_path: Path, result_path: Path, receiver_email: str, messag
 
     with open(log_path, 'r') as f:
         log = f.read()
-        error_logs = re.findall(r'ERROR:.*', log)
+        error_logs = re.findall(r'ERROR*', log)
         
     if len(error_logs) > 0:
         details = error_logs[0]
@@ -184,15 +186,18 @@ def send_log_mail(log_path: Path, result_path: Path, receiver_email: str, messag
     # email_message.set_content(msg.as_string())
 
     try:
-        send_mail(sender_email, receiver_email, msg, smtp_server, port)
+        with smtplib.SMTP(smtp_server, port) as server:
+            server.sendmail(sender_email, receiver_email, msg.as_string())
     
     except smtplib.SMTPSenderRefused:
         print("SMTPSenderRefused: too large attachment, retrying without attachment.")
         # remove attachement and try again
         msg = write_message(sender_email, receiver_email, f"{subject_prefix}: " + subject.lower(), summary, None, None)
-        send_mail(sender_email, receiver_email, msg, smtp_server, port)
+        with smtplib.SMTP(smtp_server, port) as server:
+            server.sendmail(sender_email, receiver_email, msg.as_string())
 
    
 
 if __name__ == "__main__":
-    send_log_mail(Path('logfile.log'), receiver_email='lucas.boule@eurofidai.org')
+    pass
+    #send_log_mail(Path('logfile.log'), receiver_email='lucas.boule@eurofidai.org')

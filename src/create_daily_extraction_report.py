@@ -158,22 +158,22 @@ def merge_table(type_instrument: str, df_ref_code_pays_vdf: pd.DataFrame, df_ref
         'CSV File created successfully... %s', file_to_send)
 
 
-def custom_log_config(log_path: Path, name=__name__) -> object:
-    logging.basicConfig(
-        filename=log_path,
-        level=logging.DEBUG,
-        format='%(asctime)s - %(name)s -%(levelname)s - %(message)s',
-        datefmt='%Y%m%d %H:%M:%S',
-        filemode='a',
-    )
+# def custom_log_config(log_path: Path, name=__name__) -> object:
+#     logging.basicConfig(
+#         filename=log_path,
+#         level=logging.DEBUG,
+#         format='%(asctime)s - %(name)s -%(levelname)s - %(message)s',
+#         datefmt='%Y%m%d %H:%M:%S',
+#         filemode='a',
+#     )
 
-    logging.getLogger('sqlalchemy.engine')
-    db_logger = logging.getLogger(name)
+#     logging.getLogger('sqlalchemy.engine')
+#     db_logger = logging.getLogger(name)
 
-    return db_logger
+#     return db_logger
 
 
-db_logger = log_configuration(log_path=log_location())
+# db_logger = log_configuration(log_path=log_location())
 
 
 def run_threads():
@@ -196,7 +196,7 @@ def run_threads():
     print("All threads have finished.")
 
 
-@log_args(receiver, results_path=CHEMIN_RESULTAT, mail=True, message_email=email_message, started_at=datetime.datetime.now(), hide_args_in_logs=True, subject_prefix="LOG_DEV")
+@log_args(receiver, results_path=CHEMIN_RESULTAT, mail=True, message_email=email_message, started_at=datetime.datetime.now(), hide_args_in_logs=True, subject_prefix="LOG_DEV_DAILY_EXTRACTION")
 def main():
     run_threads()
     
