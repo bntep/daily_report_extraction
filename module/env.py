@@ -40,7 +40,7 @@ dict_req = {}
 
 dict_table_cours = {"actions" :"src_cours_actions", "indices":"src_cours_indices", "fonds":"src_cours_fonds"}
 
-
+CONDITION_WHERE = f"where date_cotation >= '{DATE_DEBUT}' and date_cotation <= '{DATE_FIN}' and  identifiant is not null and ((cours_ouverture_trade is not null or cours_cloture_trade is not null or cours_plus_haut_trade is not null or cours_plus_bas_trade is not null or cours_cloture_mid is not null or cours_plus_haut_trade is not null or cours_plus_bas_trade is not null) or (cours_cloture_bid is not null and cours_cloture_ask is not null))"
 
 if __name__ == "__main__":  
     #results = DbConnector('durango').execute_query("SELECT * FROM information_schema.tables WHERE table_name LIKE 'esg%';")  # This might return multiple columns
