@@ -1,0 +1,8 @@
+**/.venv
+**/.vscode
+**/logs
+module/__pycache__/
+resultat/
+src/__pycache__/*
+utils/__pycache__/*
+utils/dbclient/__pycache__/*

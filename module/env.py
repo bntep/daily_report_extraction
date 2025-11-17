@@ -10,6 +10,7 @@ DATE_YEAR = datetime.datetime.today().strftime('%Y')
 DATE_DEBUT = datetime.datetime.today().date() - datetime.timedelta(days=15)
 DATE_FIN = datetime.datetime.today().date()
 DATE_DEBUT_MONTH = datetime.datetime.today().date() - datetime.timedelta(days=365)
+#DATE_DEBUT_MONTH = datetime.datetime.today().date() - datetime.timedelta(days=365*9)
 DATE_FIN_MONTH = datetime.datetime.today().date()
 DATE_YEAR_N1 = DATE_DEBUT_MONTH.strftime('%Y')
 date = datetime.datetime.now().strftime("%Y-%m-%d")
@@ -30,7 +31,7 @@ df_indices = pd.DataFrame()
 
 df_fonds = pd.DataFrame()
 
-dict_pays_continent ={'eu': PAYS_EU, 'as': PAYS_AS , 'am': PAYS_AM, 'af' : PAYS_AF}
+dict_pays_continent ={'europe': PAYS_EU, 'asie': PAYS_AS , 'amerique': PAYS_AM, 'afrique' : PAYS_AF}
 
 dict_instrument = {'actions': 2 , 'indices': 7 , 'fonds': 3}
 

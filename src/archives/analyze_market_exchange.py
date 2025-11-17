@@ -137,6 +137,7 @@ class BaseInstrument():
             "select code_vdf_num_pays, libelle_code_vdf_num_pays_en from ref_code_pays_vdf")
 
         for annee in [f"{DATE_YEAR}", f"{DATE_YEAR_N1}"]:
+        #for annee in [2017, 2018, 2019, 2020, 2021, 2022, 2023, 2024,2025]:
             for continent in ['europe', 'asie', 'amerique', 'afrique']:
                 globals()[f"req_{self.basename}_{continent}_{annee}"] = f"select distinct extract(year from date_cotation) as year, extract(month from date_cotation) as month, identifiant, place from (select {LIST_VAR} from {self.table_cours}_{continent}_{annee} as a  {dict_conditions[self.basename]}) as t;"
                 dict_req[f"df_{self.basename}_{continent}_{annee}"] = globals(
