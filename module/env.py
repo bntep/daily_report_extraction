@@ -2,6 +2,7 @@
 import pandas as pd
 import datetime
 import os
+import sys
 from pathlib import Path
 
 WEEKMASK = "Mon Tue Wed Thu Fri"
@@ -9,6 +10,7 @@ DATE_YEAR = datetime.datetime.today().strftime('%Y')
 DATE_DEBUT = datetime.datetime.today().date() - datetime.timedelta(days=15)
 DATE_FIN = datetime.datetime.today().date()
 DATE_DEBUT_MONTH = datetime.datetime.today().date() - datetime.timedelta(days=365)
+#DATE_DEBUT_MONTH = datetime.datetime.today().date() - datetime.timedelta(days=365*9)
 DATE_FIN_MONTH = datetime.datetime.today().date()
 DATE_YEAR_N1 = DATE_DEBUT_MONTH.strftime('%Y')
 date = datetime.datetime.now().strftime("%Y-%m-%d")
@@ -29,7 +31,7 @@ df_indices = pd.DataFrame()
 
 df_fonds = pd.DataFrame()
 
-dict_pays_continent ={'eu': PAYS_EU, 'as': PAYS_AS , 'am': PAYS_AM, 'af' : PAYS_AF}
+dict_pays_continent ={'europe': PAYS_EU, 'asie': PAYS_AS , 'amerique': PAYS_AM, 'afrique' : PAYS_AF}
 
 dict_instrument = {'actions': 2 , 'indices': 7 , 'fonds': 3}
 
@@ -39,7 +41,7 @@ dict_req = {}
 
 dict_table_cours = {"actions" :"src_cours_actions", "indices":"src_cours_indices", "fonds":"src_cours_fonds"}
 
-
+CONDITION_WHERE = f"where date_cotation >= '{DATE_DEBUT}' and date_cotation <= '{DATE_FIN}' and  identifiant is not null and ((cours_ouverture_trade is not null or cours_cloture_trade is not null or cours_plus_haut_trade is not null or cours_plus_bas_trade is not null or cours_cloture_mid is not null or cours_plus_haut_trade is not null or cours_plus_bas_trade is not null) or (cours_cloture_bid is not null and cours_cloture_ask is not null))"
 
 if __name__ == "__main__":  
     #results = DbConnector('durango').execute_query("SELECT * FROM information_schema.tables WHERE table_name LIKE 'esg%';")  # This might return multiple columns

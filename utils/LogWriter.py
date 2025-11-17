@@ -18,17 +18,19 @@ sys.path.append(str(Path(os.getcwd())))
 from utils.Mailer import send_log_mail
 from module.env import *
 
-def log_location() -> Path:
-    current_file_path = Path(sys.argv[0])
-    parent_folder_1 = current_file_path.parent.name
-    parent_folder_2 = current_file_path.parent.parent.name
-    log_filename = datetime.datetime.now().strftime('%Y%m%d-%H%M%S-') + parent_folder_2 + '-' + parent_folder_1 + '__' + current_file_path.stem + '.log'
-    LOG_PATH = Path(os.path.join(os.getcwd(), 'logs', datetime.datetime.now().strftime('%Y_%m_%d'), parent_folder_2, parent_folder_1, log_filename))
-    return LOG_PATH
+
+# Logging Setup
+# def log_location() -> Path:
+#     current_file_path = Path(sys.argv[0])
+#     parent_folder_1 = current_file_path.parent.name
+#     parent_folder_2 = current_file_path.parent.parent.name
+#     log_filename = datetime.datetime.now().strftime('%Y%m%d-%H%M%S-') + parent_folder_2 + '-' + parent_folder_1 + '__' + current_file_path.stem + '.log'
+#     LOG_PATH = Path(os.path.join(os.getcwd(), 'logs', datetime.datetime.now().strftime('%Y_%m_%d'), parent_folder_2, parent_folder_1, log_filename))
+#     return LOG_PATH
     
 
 # Logging Setup
-def log_config(log_path: Path, name = __name__ ) -> object:
+def log_configuration(log_path: Path, name = __name__ ) -> logging.Logger:
     logging.basicConfig(
         filename=log_path,
         level=logging.DEBUG,
@@ -59,7 +61,7 @@ LOG_PATH = log_location()
 # Ensure logs directory exists
 LOG_PATH.parent.mkdir(parents=True, exist_ok=True)
 
-db_logger = log_config(log_location())
+db_logger = log_configuration(log_location())
 
 # Write a decorator to log the arguments
 def log_args(receiver_email, results_path: Path, mail: bool = False, message_email: str = "", started_at = datetime.datetime.now(), hide_args_in_logs: bool = True, subject_prefix: str = "LOG_DEV"):
@@ -72,6 +74,7 @@ def log_args(receiver_email, results_path: Path, mail: bool = False, message_ema
                 result = func(*args_lst, **kwargs_dict)
             except Exception as e:
                 db_logger.error(f'ERROR: {func.__name__}: {str(e)}')
+                
                 if mail is True:
                     # log_path = log_location()
                     send_log_mail(LOG_PATH, results_path, receiver_email, message_email, subject_prefix=subject_prefix)

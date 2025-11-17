@@ -34,7 +34,7 @@ sys.path.append(str(Path(os.getcwd())))
 from module.env_db_conn import *
 
 
-def log_config(log_path: Path, name = __name__ ) -> object:
+def log_config(log_path: Path, name = __name__ )-> logging.Logger:
     logging.basicConfig(
         filename=log_path,
         level=logging.DEBUG,
@@ -48,14 +48,35 @@ def log_config(log_path: Path, name = __name__ ) -> object:
 
     return db_logger
 
-db_logger = log_config(log_location())
+
+# def log_config(log_path: Path, name=__name__) -> logging.Logger:
+#     logging.basicConfig(
+#         filename=log_path,
+#         level=logging.DEBUG,  # Set the base level to DEBUG
+#         format='%(asctime)s - %(name)s -%(levelname)s - %(message)s',
+#         datefmt='%Y%m%d %H:%M:%S',
+#         filemode='a',
+#     )
+
+#     # Get the SQLAlchemy engine logger
+#     sqlalchemy_logger = logging.getLogger('sqlalchemy.engine')
+#     sqlalchemy_logger.setLevel(logging.DEBUG)  # Set SQLAlchemy's level to DEBUG
+
+#     # Add a file handler to the SQLAlchemy logger
+#     file_handler = logging.FileHandler(log_path)
+#     file_handler.setFormatter(logging.Formatter('%(asctime)s - %(name)s -%(levelname)s - %(message)s'))
+#     sqlalchemy_logger.addHandler(file_handler)
+
+#     db_logger = logging.getLogger(name)
+#     return db_logger
+
 
 class DbConnector:
     def __init__(self, db_alias: str, echo: bool = False):
         db_alias = db_alias.upper()
         self.drivername = globals().get(f'{db_alias}_DRIVERNAME')
         if not self.drivername:
-            raise Exception(f"Variable '{db_alias}_DRIVERNAME' not set in env.py")
+            raise ValueError(f"Environment variable '{db_alias}_DRIVERNAME' is not set or is empty.")
     
         self.dbalias = db_alias
         self.dbname = globals().get(f'{db_alias}_DATABASE')
@@ -73,12 +94,13 @@ class DbConnector:
                               host=self.host,
                               database=self.dbname)
         try:
+            global db_logger
+            db_logger = log_config(log_location())
             db_logger.info('Connecting to the PostgreSQL database... %s', self.dbname)
             self.engine = create_engine(self.url, echo=echo)
             self.Session = sessionmaker(bind=self.engine)
 
-        except Exception as e:
-            print("Error while connecting to PostgreSQL", e)
+        except Exception as e:            
             db_logger.error("Error while connecting to PostgreSQL %s", sys.exc_info()[1])
             sys.exit()
     
@@ -94,10 +116,10 @@ class DbConnector:
                 try:
                     connection.execute(sqlalchemy.text(query))
                     db_logger.info("Query executed successfully.")
-                except psycopg2.errors.UndefinedTable as e:
-                    print("The table does not exist: ", e)
-                except sqlalchemy.exc.ProgrammingError as e:
-                    print("There is a syntax error in your SQL command: ", e)
+                except psycopg2.errors.UndefinedTable as e:                    
+                    db_logger.error("ERREUR: The table does not exist: ", e)
+                except sqlalchemy.exc.ProgrammingError as e:                    
+                    db_logger.error("ERREUR: There is a syntax error in your SQL command: ", exc_info=True)
 
     def execute_query(self, query: str) -> pd.DataFrame:
         with self.engine.connect() as connection:
@@ -113,14 +135,13 @@ class DbConnector:
                     else:
                         db_logger.error("Query failed.")
                         raise ValueError(f"Query failed: {query}")
-                except psycopg2.errors.UndefinedTable as e:
-                    print("The table does not exist: ", e)
+                except psycopg2.errors.UndefinedTable as e:                    
+                    db_logger.error("ERREUR:The table does not exist: ", e)
                     return pd.DataFrame()
-                except sqlalchemy.exc.ProgrammingError as e:
-                    print("There is a syntax error in your SQL command: ", e)
+                except sqlalchemy.exc.ProgrammingError as e:                    
+                    db_logger.error("ERREUR:There is a syntax error in your SQL command: ", exc_info=True)
                     return pd.DataFrame()
-                except Exception as e:
-                    print("An error occurred while executing the query: ", e)
+                except Exception as e:                   
                     db_logger.error("An error occurred while executing the query: %s", sys.exc_info()[1])
                     return pd.DataFrame()
 
@@ -139,10 +160,10 @@ class DbConnector:
                         db_logger.error("Query failed.")
                         raise ValueError(f"Query failed: {query}")
                 except psycopg2.errors.UndefinedTable as e:
-                    print("The table does not exist: ", e)
+                    db_logger.error("The table does not exist: ", e)
                     return pd.DataFrame()
                 except sqlalchemy.exc.ProgrammingError as e:
-                    print("There is a syntax error in your SQL command: ", e)
+                    db_logger.error("There is a syntax error in your SQL command: ", e)
                     return pd.DataFrame()
                 except Exception as e:
                     print("An error occurred while executing the query: ", e)

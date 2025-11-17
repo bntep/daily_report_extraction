@@ -17,7 +17,7 @@ import pandas as pd
 # rajouter dans la variable d'environnement PATH contenant la liste des répertoires systèmes (programme python, librairies, ...)
 # c'est très important quand on crée un package, de rajouter ce répertoire dans PATH
 sys.path.append(str(Path(os.getcwd())))
-from utils.LogWriter import log_location, log_config, log_args
+from utils.LogWriter import log_location, log_args, log_configuration
 from utils.Toolbox_lib import create_year_calendar
 from utils.dbclient.DatabaseClient import DbConnector
 from module.env import *
@@ -28,6 +28,9 @@ CHEMIN_RESULTAT = Path(HOME, "resultat/daily_extraction")
 CHEMIN_RESULTAT.mkdir(parents=True, exist_ok=True)
 receiver = 'bertrand.ntep@eurofidai.org'
 email_message = "Bonjour,\n\nci-joint le rapport journalier de téléchargement des bases de données sur les 15 derniers jours.\n\nCordialement,\n\n\n"
+
+
+db_logger = log_configuration(log_path=log_location())
 
 # Custom Thread Class
 class MyThread(threading.Thread):
@@ -87,7 +90,11 @@ class BaseInstrument():
             globals()[f"self.req_{self.basename}"] = f"select date_cotation, identifiant, place from (select * from {self.table_cours}_europe_{DATE_YEAR} where date_cotation >='{DATE_DEBUT}' and date_cotation<='{DATE_FIN}' UNION select * from  {self.table_cours}_asie_{DATE_YEAR} where date_cotation >='{DATE_DEBUT}' and date_cotation<='{DATE_FIN}' UNION select * from  {self.table_cours}_amerique_{DATE_YEAR} where date_cotation >='{DATE_DEBUT}' and date_cotation<='{DATE_FIN}' UNION  select * from  {self.table_cours}_afrique_{DATE_YEAR} where date_cotation >='{DATE_DEBUT}' and date_cotation<='{DATE_FIN}') as a where identifiant is not null and ((a.cours_ouverture_trade is not null or a.cours_cloture_trade is not null or a.cours_ouverture_official is not null or a.cours_plus_haut_trade is not null or a.cours_plus_bas_trade is not null or a.cours_cloture_mid is not null or a.cours_plus_haut_trade is not null or a.cours_plus_bas_trade is not null) or (a.cours_cloture_bid is not null and a.cours_cloture_ask is not null) or (a.best_bid is not null and a.best_ask is not null));"
 
         elif self.basename == "indices":
-            globals()[f"self.req_{self.basename}"] = f"select date_cotation, identifiant, place from (select * from {self.table_cours}_europe_{DATE_YEAR} where date_cotation >='{DATE_DEBUT}' and date_cotation<='{DATE_FIN}' UNION select * from  {self.table_cours}_asie_{DATE_YEAR} where date_cotation >='{DATE_DEBUT}' and date_cotation<='{DATE_FIN}' UNION select * from  {self.table_cours}_amerique_{DATE_YEAR} where date_cotation >='{DATE_DEBUT}' and date_cotation<='{DATE_FIN}' UNION  select * from  {self.table_cours}_afrique_{DATE_YEAR} where date_cotation >='{DATE_DEBUT}' and date_cotation<='{DATE_FIN}') as a where identifiant is not null and ((a.cours_ouverture_trade is not null or a.cours_cloture_trade is not null or a.cours_plus_haut_trade is not null or a.cours_plus_bas_trade is not null or a.cours_cloture_mid is not null or a.cours_plus_haut_trade is not null or a.cours_plus_bas_trade is not null) or (a.cours_cloture_bid is not null and a.cours_cloture_ask is not null));"
+            globals()[f"self.req_{self.basename}"] = f"select date_cotation, identifiant, place from ( \
+            select date_cotation, identifiant, place from {self.table_cours}_europe_{DATE_YEAR} {CONDITION_WHERE} UNION select date_cotation, identifiant, place from  {self.table_cours}_asie_{DATE_YEAR} {CONDITION_WHERE} UNION select date_cotation, identifiant, place from  {self.table_cours}_amerique_{DATE_YEAR} {CONDITION_WHERE} UNION  select date_cotation, identifiant, place from  {self.table_cours}_afrique_{DATE_YEAR} {CONDITION_WHERE} \
+            UNION \
+            select date_cotation, identifiant, place from  src_cours_actions_europe_{DATE_YEAR} {CONDITION_WHERE} UNION select date_cotation, identifiant, place from  src_cours_actions_asie_{DATE_YEAR} {CONDITION_WHERE} UNION select date_cotation, identifiant, place from  src_cours_actions_amerique_{DATE_YEAR} {CONDITION_WHERE} UNION select date_cotation, identifiant, place from  src_cours_actions_afrique_{DATE_YEAR} {CONDITION_WHERE} \
+             ) as a;"
 
         elif self.basename == "fonds":
             globals()[f"self.req_{self.basename}"] = f"select date_cotation, identifiant, place from (select * from {self.table_cours}_europe_{DATE_YEAR} where date_cotation >='{DATE_DEBUT}' and date_cotation<='{DATE_FIN}' UNION select * from  {self.table_cours}_asie_{DATE_YEAR} where date_cotation >='{DATE_DEBUT}' and date_cotation<='{DATE_FIN}' UNION select * from  {self.table_cours}_amerique_{DATE_YEAR} where date_cotation >='{DATE_DEBUT}' and date_cotation<='{DATE_FIN}' UNION  select * from  {self.table_cours}_afrique_{DATE_YEAR} where date_cotation >='{DATE_DEBUT}' and date_cotation<='{DATE_FIN}') as a where identifiant is not null and ((a.cours_ouverture_trade is not null or a.cours_cloture_trade is not null or a.cours_ouverture_official is not null or a.cours_plus_haut_trade is not null or a.cours_plus_bas_trade is not null or a.cours_cloture_mid is not null or a.cours_plus_haut_trade is not null or a.cours_plus_bas_trade is not null) or (a.cours_cloture_bid is not null and a.cours_cloture_ask is not null) or (a.best_bid is not null and a.best_ask is not null) or (a.cours_plus_haut_nav is not null or a.cours_plus_bas_nav is not null) or (a.valeur_fonds_issue is not null) or (valeur_fonds_rp is not null) or (reference_nav is not null) or (provider_assets is not null) or (provider_oustanding_shares is not null));"
@@ -150,27 +157,27 @@ def merge_table(type_instrument: str, df_ref_code_pays_vdf: pd.DataFrame, df_ref
             dict_instrument[f"{type_instrument}"]]
     df = df.pivot_table(index=['libelle_code_vdf_num_pays_en', 'place', 'nom_long'], columns=[
         'date_cotation'], values='identifiant', aggfunc=lambda x: len(x.unique()))
-    df.to_csv(Path(CHEMIN_RESULTAT, file_to_send))
+    df.to_csv(Path(CHEMIN_RESULTAT, file_to_send), sep="|", header=True, index=True, encoding='utf-8')
     db_logger.info(
         'CSV File created successfully... %s', file_to_send)
 
 
-def log_config(log_path: Path, name=__name__) -> object:
-    logging.basicConfig(
-        filename=log_path,
-        level=logging.DEBUG,
-        format='%(asctime)s - %(name)s -%(levelname)s - %(message)s',
-        datefmt='%Y%m%d %H:%M:%S',
-        filemode='a',
-    )
+# def custom_log_config(log_path: Path, name=__name__) -> object:
+#     logging.basicConfig(
+#         filename=log_path,
+#         level=logging.DEBUG,
+#         format='%(asctime)s - %(name)s -%(levelname)s - %(message)s',
+#         datefmt='%Y%m%d %H:%M:%S',
+#         filemode='a',
+#     )
 
-    logging.getLogger('sqlalchemy.engine')
-    db_logger = logging.getLogger(name)
+#     logging.getLogger('sqlalchemy.engine')
+#     db_logger = logging.getLogger(name)
 
-    return db_logger
+#     return db_logger
 
 
-db_logger = log_config(log_path=log_location())
+# db_logger = log_configuration(log_path=log_location())
 
 
 def run_threads():
@@ -193,7 +200,7 @@ def run_threads():
     print("All threads have finished.")
 
 
-@log_args(receiver, results_path=CHEMIN_RESULTAT, mail=True, message_email=email_message, started_at=datetime.datetime.now(), hide_args_in_logs=True, subject_prefix="LOG_DEV")
+@log_args(receiver, results_path=CHEMIN_RESULTAT, mail=True, message_email=email_message, started_at=datetime.datetime.now(), hide_args_in_logs=True, subject_prefix="LOG_DEV_DAILY_EXTRACTION")
 def main():
     run_threads()
     
