@@ -26,15 +26,18 @@ from module.env import *
 
 # Path Definitions
 HOME = Path(__file__).parent.parent
+
+
 CHEMIN_RESULTAT = Path(HOME, "resultat/daily_extraction")
 CHEMIN_RESULTAT.mkdir(parents=True, exist_ok=True)
+LOG_SUBJECT_PREFIX = "LOG_DEV_DAILY_EXTRACTION"
 receiver = 'bertrand.ntep@eurofidai.org'
 email_message = "Bonjour,\n\nci-joint le rapport journalier de téléchargement des bases de données sur les 15 derniers jours.\n\nCordialement,\n\n\n"
 
 db_logger = log_configuration(log_path=log_location())
 
-def parse_agrmument():
-    pass
+def parse_arguments():    
+    global CHEMIN_RESULTAT, LOG_SUBJECT_PREFIX
     parser = argparse.ArgumentParser(description="This program creates a report of stocks database extraction.")
     parser.add_argument('--program', '-p', nargs='*',
                         help="choose the type of report: daily_extraction or monthly_analyze_place_vdf", required=True)
@@ -42,6 +45,23 @@ def parse_agrmument():
     parser.add_argument('--database', '-d', nargs='*',
                         help="choose the database: actions, indices, fonds", required=False)
     args = parser.parse_args()
+
+    if args.program[0] not in ['daily_extraction', 'monthly_analyze_place_vdf']:
+        raise ValueError("Argument --program must be 'daily_extraction' or 'monthly_analyze_place_vdf'")
+    
+    if args.program[0] == 'daily_extraction':         
+        CHEMIN_RESULTAT = Path(HOME, "resultat/daily_extraction")
+        CHEMIN_RESULTAT.mkdir(parents=True, exist_ok=True)
+        LOG_SUBJECT_PREFIX = "LOG_DEV_DAILY_EXTRACTION"
+    elif args.program[0] == 'monthly_analyze_place_vdf':
+        CHEMIN_RESULTAT = Path(HOME, "resultat/analyze_market_exchange")
+        CHEMIN_RESULTAT.mkdir(parents=True, exist_ok=True)
+        LOG_SUBJECT_PREFIX = "LOG_DEV_MONTHLY_ANALYZE_PLACE_VDF"
+    
+    if args.database:
+        if args.database[0] not in ['actions', 'indices', 'fonds']:
+            raise ValueError("Argument --database must be 'actions', 'indices' or 'fonds'")
+        
     return args
 
 
@@ -169,6 +189,8 @@ class BaseInstrument():
             #for continent in ['afrique', 'amerique']:
                 bdd = self._get_database(self.database_name, continent)
                 req_extrac_cours= f"select distinct extract(year from date_cotation) as year, extract(month from date_cotation) as month, identifiant, place from (select {LIST_VAR} from {bdd.table_cours}_{continent}_{annee} as a  {self.conditions_where} ) as t"
+                #req_extrac_cours= f"select distinct extract(year from date_cotation) as year, extract(month from date_cotation) as month, identifiant, place from (select {LIST_VAR} from {bdd.table_cours}_{annee} as a  {self.conditions_where} ) as t"
+                
                 if self.database_name == "indices":
                     bdd_ind_stock= self._get_database("actions", continent)
                     conditions_where_ind_stocks = f" where a.identifiant in (select distinct code_valoren from allid_vdf where instrument_type = {dict_instrument['indices']}) \
@@ -176,6 +198,8 @@ class BaseInstrument():
                         or a.cours_plus_bas_trade is not null or a.cours_cloture_mid is not null ) or (a.cours_cloture_bid is not null \
                             and a.cours_cloture_ask is not null) or (a.best_bid is not null and a.best_ask is not null))"
                     req_extrac_ind_stock = f"select distinct extract(year from date_cotation) as year, extract(month from date_cotation) as month, identifiant, place from (select {LIST_VAR} from {bdd_ind_stock.table_cours}_{continent}_{annee} as a  {conditions_where_ind_stocks}) as t"
+                    #req_extrac_ind_stock = f"select distinct extract(year from date_cotation) as year, extract(month from date_cotation) as month, identifiant, place from (select {LIST_VAR} from {bdd_ind_stock.table_cours}_{annee} as a  {conditions_where_ind_stocks}) as t"
+                    
                     union_parts.append(req_extrac_ind_stock)
                 union_parts.append(req_extrac_cours)              
         full_req = " UNION ALL ".join(union_parts)
@@ -210,12 +234,14 @@ class Stocks(BaseInstrument):
         if continent in ["europe", "amerique", "afrique", "asie"]:
                     self.continent = continent                
                     #self.table_cours = f"src_cours_{self.database_name}_{self.continent}"  
-                    self.table_cours = f"src_cours_{self.database_name}"      
+                    self.table_cours = f"src_cours_{self.database_name}" 
+                    self.req_cours = f"select date_cotation, identifiant, place from {self.table_cours}_{self.continent} LEFT JOIN ref_code_place_vdf on {self.table_cours}_{self.continent}.place = ref_code_place_vdf.code_place_vdf where ref_code_place_vdf.domicile IN (select code_vdf_num_pays from ref_code_pays_vdf where libelle_code_vdf_num_pays_en in {dict_pays_continent[self.continent]}) AND date_cotation >='{DATE_DEBUT}' and date_cotation<='{DATE_FIN}'"
+            
         else:
              raise ValueError("Nom de continent incorrect: <europe|asie|amerique|afrique>")
 
         #self.req_cours = f"select date_cotation, identifiant, place from {self.table_cours}_{DATE_YEAR} LEFT JOIN ref_code_place_vdf on {self.table_cours}_{DATE_YEAR}.place = ref_code_place_vdf.code_place_vdf where ref_code_place_vdf.domicile IN (select code_vdf_num_pays from ref_code_pays_vdf where libelle_code_vdf_num_pays_en in {dict_pays_continent[self.continent]}) AND date_cotation >='{DATE_DEBUT}' and date_cotation<='{DATE_FIN}'"
-        self.req_cours = f"select date_cotation, identifiant, place from {self.table_cours} LEFT JOIN ref_code_place_vdf on {self.table_cours}.place = ref_code_place_vdf.code_place_vdf where ref_code_place_vdf.domicile IN (select code_vdf_num_pays from ref_code_pays_vdf where libelle_code_vdf_num_pays_en in {dict_pays_continent[self.continent]}) AND date_cotation >='{DATE_DEBUT}' and date_cotation<='{DATE_FIN}'"
+        #self.req_cours = f"select date_cotation, identifiant, place from {self.table_cours} LEFT JOIN ref_code_place_vdf on {self.table_cours}.place = ref_code_place_vdf.code_place_vdf where ref_code_place_vdf.domicile IN (select code_vdf_num_pays from ref_code_pays_vdf where libelle_code_vdf_num_pays_en in {dict_pays_continent[self.continent]}) AND date_cotation >='{DATE_DEBUT}' and date_cotation<='{DATE_FIN}'"
         self.database_name_continent = f"{self.database_name}_{self.continent}"
         self.pays = dict_pays_continent[self.continent]  
            
@@ -230,11 +256,13 @@ class Indices(BaseInstrument):
 
         if continent in ["europe", "amerique", "afrique", "asie"]:
                     self.continent = continent                
-                    self.table_cours = f"src_cours_{self.database_name}_{self.continent}"        
+                    self.table_cours = f"src_cours_{self.database_name}" 
+                    self.req_cours = f"select date_cotation, identifiant, place from {self.table_cours}_{self.continent}_{DATE_YEAR} where date_cotation >='{DATE_DEBUT}' and date_cotation<='{DATE_FIN}'"
+               
         else:
              raise ValueError("Nom de continent incorrect: <europe|asie|amerique|afrique>")
         
-        self.req_cours = f"select date_cotation, identifiant, place from {self.table_cours}_{DATE_YEAR} where date_cotation >='{DATE_DEBUT}' and date_cotation<='{DATE_FIN}'"
+        #self.req_cours = f"select date_cotation, identifiant, place from {self.table_cours}_{DATE_YEAR} where date_cotation >='{DATE_DEBUT}' and date_cotation<='{DATE_FIN}'"
         self.database_name_continent = f"{self.database_name}_{self.continent}"
         self.pays = ""       
 
@@ -249,11 +277,13 @@ class Funds(BaseInstrument):
 
         if continent in ["europe", "amerique", "afrique", "asie"]:
                     self.continent = continent                
-                    self.table_cours = f"src_cours_{self.database_name}_{self.continent}"        
+                    self.table_cours = f"src_cours_{self.database_name}" 
+                    self.req_cours = f"select date_cotation, identifiant, place from {self.table_cours}_{self.continent}_{DATE_YEAR} where date_cotation >='{DATE_DEBUT}' and date_cotation<='{DATE_FIN}'"
+              
         else:
              raise ValueError("Nom de continent incorrect: <europe|asie|amerique|afrique>")
         
-        self.req_cours = f"select date_cotation, identifiant, place from {self.table_cours}_{DATE_YEAR} where date_cotation >='{DATE_DEBUT}' and date_cotation<='{DATE_FIN}'"
+        #self.req_cours = f"select date_cotation, identifiant, place from {self.table_cours}_{DATE_YEAR} where date_cotation >='{DATE_DEBUT}' and date_cotation<='{DATE_FIN}'"
         self.database_name_continent = f"{self.database_name}_{self.continent}"
         self.pays = ""          
 
@@ -324,26 +354,12 @@ def run_threads(program: str):
     print("All threads have finished.") 
 
 
-@log_args(receiver, results_path=CHEMIN_RESULTAT, mail=True, message_email=email_message, started_at=datetime.datetime.now(), hide_args_in_logs=True, subject_prefix="LOG_DEV_DAILY_EXTRACTION")
+args = parse_arguments()
+
+@log_args(receiver, results_path=CHEMIN_RESULTAT, mail=True, message_email=email_message, started_at=datetime.datetime.now(), hide_args_in_logs=True, subject_prefix=LOG_SUBJECT_PREFIX)
 def main():
 
-    args= parse_agrmument()
-    
-        
-    if args.program[0] not in ['daily_extraction', 'monthly_analyze_place_vdf']:
-        raise ValueError("Argument --program must be 'daily_extraction' or 'monthly_analyze_place_vdf'")
-    
-    if args.program[0] == 'daily_extraction':
-        CHEMIN_RESULTAT = Path(HOME, "resultat/daily_extraction")
-        CHEMIN_RESULTAT.mkdir(parents=True, exist_ok=True)
-    elif args.program[0] == 'monthly_analyze_place_vdf':
-        CHEMIN_RESULTAT = Path(HOME, "resultat/analyze_market_exchange")
-        CHEMIN_RESULTAT.mkdir(parents=True, exist_ok=True)
-    
-    if args.database:
-        if args.database[0] not in ['actions', 'indices', 'fonds']:
-            raise ValueError("Argument --database must be 'actions', 'indices' or 'fonds'")
-        
+    db_logger.info(f"\n=================================Start of processing program: {args.program[0]}===================================\n")
     print(f"\n=================================Start of processing program: {args.program[0]}===================================\n")
     
     if args.database:
